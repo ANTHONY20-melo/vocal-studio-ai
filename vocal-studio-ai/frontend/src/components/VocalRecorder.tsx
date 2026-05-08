@@ -3,8 +3,8 @@ import * as THREE from 'three';
 import { Mic, Square, Volume2, Loader2, Download, History, Trash2, PlayCircle } from 'lucide-react';
 import { useStudioStore } from '../store/useStudioStore';
 import { useLanguage } from '../context/LanguageContext';
-import { supabase } from '../lib/supabase';
-import { saveLocalRecording, getLocalRecordings, deleteLocalRecording, type Recording } from '../lib/db';
+import { supabase } from './supabase';
+import { saveLocalRecording, getLocalRecordings, deleteLocalRecording, type Recording } from './db';
 
 export const VocalRecorder: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);

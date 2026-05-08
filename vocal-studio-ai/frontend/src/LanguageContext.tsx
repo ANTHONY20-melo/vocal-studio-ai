@@ -14,6 +14,7 @@ interface Translations {
   recorderRhythmPrompt: string;
   customRhythmPlaceholder: string;
   suggestRhythm: string;
+  vocalInsights: string;
   features: {
     hd: { title: string; desc: string };
     ai: { title: string; desc: string };
@@ -24,6 +25,7 @@ interface Translations {
     library: string;
     mixer: string;
     effects: string;
+    insights: string;
     export: string;
   }
 }
@@ -40,6 +42,7 @@ const translations: Record<Language, Translations> = {
     dashboardTitle: "Minhas Produções IA",
     recorderRhythmPrompt: "Ritmos sugeridos para sua voz:",
     customRhythmPlaceholder: "Ou digite outro ritmo...",
+    vocalInsights: "Insights Vocais",
     features: {
       hd: { title: "Captura HD", desc: "Áudio cru gravado em 44.1kHz." },
       ai: { title: "Masterização IA", desc: "Ajuste de tom automático." },
@@ -50,6 +53,7 @@ const translations: Record<Language, Translations> = {
       library: "Biblioteca de Samples",
       mixer: "Mixer & Canais",
       effects: "Rack de Efeitos",
+      insights: "Análise Vocais",
       export: "Exportar Projeto"
     }
   },
@@ -64,6 +68,7 @@ const translations: Record<Language, Translations> = {
     dashboardTitle: "My AI Productions",
     recorderRhythmPrompt: "Rhythms suggested for your voice:",
     customRhythmPlaceholder: "Or type another rhythm...",
+    vocalInsights: "Vocal Insights",
     features: {
       hd: { title: "HD Capture", desc: "Raw audio recorded at 44.1kHz." },
       ai: { title: "AI Mastering", desc: "Automatic pitch correction." },
@@ -74,6 +79,7 @@ const translations: Record<Language, Translations> = {
       library: "Sample Library",
       mixer: "Mixer & Channels",
       effects: "Effects Rack",
+      insights: "Vocal Insights",
       export: "Export Project"
     }
   }

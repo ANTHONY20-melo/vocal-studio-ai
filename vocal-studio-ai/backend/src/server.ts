@@ -6,7 +6,13 @@ import cors from 'cors';
 import multer from 'multer';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
-import composerRoutes from './routes/composer.js'; // Importa as rotas do compositor
+import composerRoutes from './routes/composer.js';
+
+// Configuração do CORS para produção
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173', // Sua URL do Vercel aqui
+  optionsSuccessStatus: 200
+};
 
 dotenv.config();
 
@@ -14,7 +20,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Configurando o cliente Supabase
+// Configurando o cliente Supabase (usando variáveis de ambiente)
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -40,7 +46,7 @@ const upload = multer({
 });
 
 // Ativando as rotas do Compositor de IA
-app.use('/api/composer', composerRoutes);
+app.use('/api/composer', cors(corsOptions), composerRoutes); // Aplicando CORS apenas para as rotas do compositor
 
 // Rota de Upload
 app.post('/api/studio/process', upload.single('audio'), async (req: Request, res: Response) => {

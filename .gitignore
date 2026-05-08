@@ -1,10 +1,5 @@
 node_modules
-
-# Segurança: Nunca subir chaves de API
 .env
-**/.env
-*.env
-
-# Build: Pastas geradas automaticamente
-dist/
-build/
+dist
+build
+.vercel

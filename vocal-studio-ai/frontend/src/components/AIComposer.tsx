@@ -67,7 +67,7 @@ export const AIComposer: React.FC = () => {
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
 
     try {
-      const response = await fetch(`${API_URL}/api/composer/generate`, {
+      const response = await fetch(`${API_URL}/api/composer/generate`, { // Usando API_URL
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -84,7 +84,7 @@ export const AIComposer: React.FC = () => {
       // Inicia o Polling
       const taskId = data.taskId;
       const pollInterval = setInterval(async () => {
-        try {
+        try { // Usando API_URL
           const statusRes = await fetch(`${API_URL}/api/composer/status/${taskId}`);
           const statusData = await statusRes.json();
 

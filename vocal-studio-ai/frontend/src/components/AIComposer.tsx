@@ -64,8 +64,10 @@ export const AIComposer: React.FC = () => {
     setComposerError(null);
     setGeneratedSongUrl(null); // Limpa a URL anterior
 
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
+
     try {
-      const response = await fetch('http://localhost:3333/api/composer/generate', { // Endpoint correto
+      const response = await fetch(`${API_URL}/api/composer/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -83,7 +85,7 @@ export const AIComposer: React.FC = () => {
       const taskId = data.taskId;
       const pollInterval = setInterval(async () => {
         try {
-          const statusRes = await fetch(`http://localhost:3333/api/composer/status/${taskId}`);
+          const statusRes = await fetch(`${API_URL}/api/composer/status/${taskId}`);
           const statusData = await statusRes.json();
 
           if (statusData.status === 'completed') {

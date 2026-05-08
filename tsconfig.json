@@ -1,4 +1,32 @@
+
 {
-  "compilerOptions": {},
-  "extends": "expo/tsconfig.base"
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "Bundler",
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "types": [], 
+    "typeRoots": [
+      "./node_modules/@types",
+      "./vocal-studio-ai/frontend/node_modules/@types"
+    ],
+    "paths": {
+      "@/*": ["vocal-studio-ai/frontend/src/*"],
+      "@components/*": ["vocal-studio-ai/frontend/src/components/*"],
+      "@lib/*": ["vocal-studio-ai/frontend/src/lib/*"],
+      "@context/*": ["vocal-studio-ai/frontend/src/context/*"],
+      "@store/*": ["vocal-studio-ai/frontend/src/store/*"]
+    }
+  },
+  "include": [
+    "vocal-studio-ai/frontend/src/**/*.ts",
+    "vocal-studio-ai/frontend/src/**/*.tsx",
+    "vocal-studio-ai/frontend/src/**/*.d.ts"
+  ]
 }

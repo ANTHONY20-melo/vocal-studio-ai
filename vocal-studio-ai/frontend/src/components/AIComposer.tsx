@@ -191,16 +191,16 @@ export const AIComposer: React.FC = () => {
               onChange={(e) => setSelectedVoiceStyle(e.target.value)}
               className="flex-1 p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
             >
-              <option value="femalePop">{t.voiceStyles.femalePop}</option>
-              <option value="femaleHigh">{t.voiceStyles.femaleHigh}</option>
-              <option value="gospelFemale">{t.voiceStyles.gospelFemale}</option>
-              <option value="maleDeep">{t.voiceStyles.maleDeep}</option>
-              <option value="maleHigh">{t.voiceStyles.maleHigh}</option>
-              <option value="maleRock">{t.voiceStyles.maleRock}</option>
-              <option value="gospelMale">{t.voiceStyles.gospelMale}</option>
-              <option value="falsetto">{t.voiceStyles.falsetto}</option>
-              <option value="melismatic">{t.voiceStyles.melismatic}</option>
-              <option value="soulful">{t.voiceStyles.soulful}</option>
+              <option value="femalePop">{t.voiceStyles?.femalePop}</option>
+              <option value="femaleHigh">{t.voiceStyles?.femaleHigh}</option>
+              <option value="gospelFemale">{t.voiceStyles?.gospelFemale}</option>
+              <option value="maleDeep">{t.voiceStyles?.maleDeep}</option>
+              <option value="maleHigh">{t.voiceStyles?.maleHigh}</option>
+              <option value="maleRock">{t.voiceStyles?.maleRock}</option>
+              <option value="gospelMale">{t.voiceStyles?.gospelMale}</option>
+              <option value="falsetto">{t.voiceStyles?.falsetto}</option>
+              <option value="melismatic">{t.voiceStyles?.melismatic}</option>
+              <option value="soulful">{t.voiceStyles?.soulful}</option>
             </select>
             <button 
               onClick={togglePreview}

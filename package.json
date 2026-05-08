@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "expo": "^55.0.23",
+    "lucide-react": "^1.14.0",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.10",
+    "typescript": "~5.9.2"
+  }
+}

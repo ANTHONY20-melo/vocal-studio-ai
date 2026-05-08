@@ -1,0 +1,1 @@
+export {}; // Arquivo movido para o backend.

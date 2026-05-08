@@ -20,9 +20,12 @@ interface Translations {
   delayTime: string;
   delayFeedback: string;
   suggestRhythm: string;
+  exportWav: string;
+  studioHistory: string;
+  recordingLive: string;
   voiceStyleLabel: string;
   vocalInsights: string;
-  voiceStyles: Record<string, string>;
+  voiceStyles: { [key: string]: string };
   features: {
     hd: { title: string; desc: string };
     ai: { title: string; desc: string };
@@ -57,6 +60,9 @@ const translations: Record<Language, Translations> = {
     delayTime: "Tempo de Delay",
     delayFeedback: "Feedback de Delay",
     vocalInsights: "Análise Vocal IA",
+    exportWav: "Exportar WAV",
+    studioHistory: "Fitas Master (Local)",
+    recordingLive: "GRAVANDO",
     voiceStyleLabel: "Estilo de Voz (IA)",
     voiceStyles: {
       femalePop: "Feminina Pop (Médio)",
@@ -101,6 +107,9 @@ const translations: Record<Language, Translations> = {
     delayTime: "Delay Time",
     delayFeedback: "Delay Feedback",
     vocalInsights: "AI Vocal Analysis",
+    exportWav: "Export WAV",
+    studioHistory: "Master Tapes (Local)",
+    recordingLive: "ON AIR / REC",
     voiceStyleLabel: "Voice Style (AI)",
     voiceStyles: {
       femalePop: "Female Pop (Mid)",

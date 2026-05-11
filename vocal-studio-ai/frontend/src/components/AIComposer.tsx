@@ -45,7 +45,11 @@ export const AIComposer: React.FC = () => {
   } = useStudioStore();
 
   // Ritmos padrão se nenhum for selecionado no VocalRecorder
-  const defaultRhythms = ['Gospel', 'Pagode', 'Axé', 'Bolero', 'Sertanejo', 'Trap'];
+  const defaultRhythms = [
+    'Gospel', 'Pagode', 'Axé', 'Sertanejo', 'Trap', 
+    'Rock Alternativo', 'Reggaeton', 'Bossa Nova', 
+    'Lo-fi Chill', 'Phonk', 'Pop Anos 80'
+  ];
   const rhythmsToDisplay = selectedRhythm && selectedRhythm.trim() !== "" 
     ? [selectedRhythm, ...defaultRhythms.filter(r => r !== selectedRhythm)] 
     : defaultRhythms;

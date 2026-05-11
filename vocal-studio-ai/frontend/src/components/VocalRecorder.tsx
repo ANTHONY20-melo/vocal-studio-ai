@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Loader2, Download, Play, Trash2, Sliders, Radio, Activity, CloudUpload } from 'lucide-react';
+import { Mic, Square, Loader2, Download, Play, Trash2, Sliders, Radio, Activity, CloudUpload, History as HistoryIcon } from 'lucide-react';
 import { useStudioStore } from '@store/useStudioStore';
 import { supabase } from '@lib/supabase';
 import { saveLocalRecording, getLocalRecordings, deleteLocalRecording, type Recording } from '@lib/db';
@@ -112,15 +112,19 @@ export const VocalRecorder: React.FC = () => {
       const newUrl = URL.createObjectURL(wavBlob);
       setWavUrl(newUrl);
 
-      await saveLocalRecording({
+      const newRecording: Recording = {
         id: crypto.randomUUID(),
         name: `Take ${localHistory.length + 1}`,
         blob: wavBlob,
         timestamp: Date.now(),
         duration: audioBuffer.duration
-      });
+      };
+
+      await saveLocalRecording(newRecording);
       
       getLocalRecordings().then(setLocalHistory);
+      // ATIVAÇÃO AUTOMÁTICA DO UPLOAD PARA NUVEM
+      await uploadTakeToCloud(newRecording);
     } catch (err) {
       console.error("Erro no processamento:", err);
     } finally {

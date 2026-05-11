@@ -82,7 +82,7 @@ export const VocalRecorder: React.FC = () => {
         });
 
       if (error) throw error;
-
+      
       const { data: { publicUrl } } = supabase.storage
         .from('vocal-recordings')
         .getPublicUrl(fileName);
@@ -90,10 +90,12 @@ export const VocalRecorder: React.FC = () => {
       console.log("Upload concluído! URL pública:", publicUrl);
       // Aqui você pode chamar uma função para salvar a publicUrl no seu banco de dados
     } catch (err) {
-      console.error("Erro no upload para Supabase:", err);
+      if (err instanceof Error) {
+        console.error("Erro no upload para Supabase:", err.message);
+      } else {
+        console.error("Erro desconhecido no upload:", err);
+      }
       alert("Erro ao salvar o áudio no servidor.");
-    } finally {
-      setIsUploading(false);
     }
   };
 

@@ -7,21 +7,16 @@ export const AIDashboard: React.FC = () => {
   const { t } = useLanguage();
   const [playingId, setPlayingId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const { songs, removeSong, renameSong, masterVolume, aiTrackVolume, isMuted } = useStudioStore();
+  const { songs, removeSong, renameSong, masterVolume, aiTrackVolume, isMuted, volumeLevel, isRecording } = useStudioStore();
 
   // Sincroniza o volume do hardware virtual com o elemento de áudio real
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.volume = isMuted ? 0 : (masterVolume * aiTrackVolume);
+      // Lógica de Smart Ducking: Se estiver gravando e detectando voz (> 10%), abaixa a música em 70%
+      const duckingFactor = (isRecording && volumeLevel > 10) ? 0.3 : 1.0;
+      audioRef.current.volume = isMuted ? 0 : (masterVolume * aiTrackVolume * duckingFactor);
     }
-  }, [masterVolume, aiTrackVolume, playingId, isMuted]);
-
-  // Efeito para atualizar o volume em tempo real quando os sliders do Mixer mudarem
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = masterVolume * aiTrackVolume;
-    }
-  }, [masterVolume, aiTrackVolume, playingId]);
+  }, [masterVolume, aiTrackVolume, playingId, isMuted, volumeLevel, isRecording]);
 
   const togglePlay = (id: string, url: string) => {
     if (playingId === id) {

@@ -33,7 +33,7 @@ export const getLocalRecordings = async (): Promise<Recording[]> => {
   const db = await openDB();
   return new Promise((resolve) => {
     const request = db.transaction(STORE_NAME).objectStore(STORE_NAME).getAll();
-    request.onsuccess = () => resolve(request.result.sort((a, b) => b.timestamp - a.timestamp));
+    request.onsuccess = () => resolve(request.result.sort((a, b: any) => b.timestamp - a.timestamp));
   });
 };
 

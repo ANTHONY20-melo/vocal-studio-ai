@@ -1,14 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Volume2, Loader2 } from 'lucide-react';
+import { Mic, Square, Loader2, Download, Play, Trash2, Sliders, Radio, Activity } from 'lucide-react';
 import { useStudioStore } from '@store/useStudioStore';
-import { supabase } from '@lib/supabase';
+import { saveLocalRecording, getLocalRecordings, deleteLocalRecording, type Recording } from '@lib/db';
 
 export const VocalRecorder: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const { setVolumeLevel } = useStudioStore();
+  const [wavUrl, setWavUrl] = useState<string | null>(null);
+  const [localHistory, setLocalHistory] = useState<Recording[]>([]);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+
+  const { volumeLevel, setVolumeLevel } = useStudioStore();
   
-  // Referências para Web Audio API
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -16,11 +19,14 @@ export const VocalRecorder: React.FC = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const animationFrameRef = useRef<number>();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Função para desenhar a forma de onda
+  useEffect(() => {
+    getLocalRecordings().then(setLocalHistory);
+  }, []);
+
   const drawWaveform = () => {
     if (!analyserRef.current || !canvasRef.current) return;
-
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -32,12 +38,11 @@ export const VocalRecorder: React.FC = () => {
       animationFrameRef.current = requestAnimationFrame(renderFrame);
       analyserRef.current!.getByteTimeDomainData(dataArray);
 
-      // Limpa o canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
-      // Configurações do traço
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = '#6366f1'; // indigo-500
+      // Estilo da onda estilo monitor de estúdio
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = isRecording ? '#ef4444' : '#6366f1'; 
       ctx.beginPath();
 
       const sliceWidth = canvas.width / bufferLength;
@@ -48,15 +53,10 @@ export const VocalRecorder: React.FC = () => {
         const v = dataArray[i] / 128.0;
         const y = (v * canvas.height) / 2;
 
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
 
         x += sliceWidth;
-        
-        // Cálculo de volume para o store global (0-100)
         sum += Math.abs(dataArray[i] - 128);
       }
 
@@ -70,32 +70,60 @@ export const VocalRecorder: React.FC = () => {
     renderFrame();
   };
 
-  const uploadAudio = async (audioBlob: Blob) => {
+  const audioBufferToWav = (buffer: AudioBuffer): Blob => {
+    const numOfChan = buffer.numberOfChannels;
+    const length = buffer.length * numOfChan * 2 + 44;
+    const buffer2 = new ArrayBuffer(length);
+    const view = new DataView(buffer2);
+    const channels = [];
+    let sample; let offset = 0; let pos = 0;
+
+    const setUint16 = (data: number) => { view.setUint16(pos, data, true); pos += 2; };
+    const setUint32 = (data: number) => { view.setUint32(pos, data, true); pos += 4; };
+
+    setUint32(0x46464952); setUint32(length - 8); setUint32(0x45564157);
+    setUint32(0x20746d66); setUint32(16); setUint16(1); setUint16(numOfChan);
+    setUint32(buffer.sampleRate); setUint32(buffer.sampleRate * 2 * numOfChan);
+    setUint16(numOfChan * 2); setUint16(16);
+    setUint32(0x61746164); setUint32(length - pos - 4);
+
+    for (let i = 0; i < numOfChan; i++) channels.push(buffer.getChannelData(i));
+
+    while (pos < length) {
+      for (let i = 0; i < numOfChan; i++) {
+        sample = Math.max(-1, Math.min(1, channels[i][offset]));
+        sample = (sample < 0 ? sample * 0x8000 : sample * 0x7fff) | 0;
+        view.setInt16(pos, sample, true); pos += 2;
+      }
+      offset++;
+    }
+    return new Blob([buffer2], { type: 'audio/wav' });
+  };
+
+  const handleStopRecordingProcess = async (audioBlob: Blob) => {
     setIsUploading(true);
     try {
-      const fileName = `vocal_${Date.now()}.webm`;
-      const { error } = await supabase.storage
-        .from('vocal-recordings') // Certifique-se de que este bucket existe no Supabase
-        .upload(fileName, audioBlob, {
-          contentType: 'audio/webm',
-          upsert: false
-        });
-
-      if (error) throw error;
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const tempCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
+      const wavBlob = audioBufferToWav(audioBuffer);
       
-      const { data: { publicUrl } } = supabase.storage
-        .from('vocal-recordings')
-        .getPublicUrl(fileName);
+      const newUrl = URL.createObjectURL(wavBlob);
+      setWavUrl(newUrl);
 
-      console.log("Upload concluído! URL pública:", publicUrl);
-      // Aqui você pode chamar uma função para salvar a publicUrl no seu banco de dados
+      await saveLocalRecording({
+        id: crypto.randomUUID(),
+        name: `Take ${localHistory.length + 1}`,
+        blob: wavBlob,
+        timestamp: Date.now(),
+        duration: audioBuffer.duration
+      });
+      
+      getLocalRecordings().then(setLocalHistory);
     } catch (err) {
-      if (err instanceof Error) {
-        console.error("Erro no upload para Supabase:", err.message);
-      } else {
-        console.error("Erro desconhecido no upload:", err);
-      }
-      alert("Erro ao salvar o áudio no servidor.");
+      console.error("Erro no processamento:", err);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -104,22 +132,19 @@ export const VocalRecorder: React.FC = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       audioChunksRef.current = [];
+      setWavUrl(null);
 
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      if (audioContextRef.current.state === 'suspended') {
-        await audioContextRef.current.resume();
-      }
-      const source = audioContextRef.current.createMediaStreamSource(stream);
+      if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
       
+      const source = audioContextRef.current.createMediaStreamSource(stream);
       analyserRef.current = audioContextRef.current.createAnalyser();
       
-      // Configuração do MediaRecorder para salvar o arquivo
       mediaRecorderRef.current = new MediaRecorder(stream);
       mediaRecorderRef.current.ondataavailable = (event) => audioChunksRef.current.push(event.data);
-      mediaRecorderRef.current.onstop = () => uploadAudio(new Blob(audioChunksRef.current, { type: 'audio/webm' }));
+      mediaRecorderRef.current.onstop = () => handleStopRecordingProcess(new Blob(audioChunksRef.current, { type: 'audio/webm' }));
 
       analyserRef.current.fftSize = 2048;
-      
       source.connect(analyserRef.current);
       
       setIsRecording(true);
@@ -127,76 +152,156 @@ export const VocalRecorder: React.FC = () => {
       drawWaveform();
     } catch (err) {
       console.error("Erro ao acessar microfone:", err);
-      alert("Não foi possível acessar o microfone. Verifique as permissões.");
+      alert("Permissão de microfone negada.");
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-    }
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-    }
+    if (mediaRecorderRef.current && isRecording) mediaRecorderRef.current.stop();
+    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
+    if (audioContextRef.current) audioContextRef.current.close();
     setIsRecording(false);
     setVolumeLevel(0);
   };
 
-  // Limpeza ao desmontar o componente
   useEffect(() => {
-    return () => {
-      if (isRecording) stopRecording();
-    };
+    return () => { if (isRecording) stopRecording(); };
   }, [isRecording]);
 
+  const togglePlay = (rec: Recording) => {
+    if (playingId === rec.id && currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      setPlayingId(null);
+      return;
+    }
+    
+    if (currentAudioRef.current) currentAudioRef.current.pause();
+    
+    const audio = new Audio(URL.createObjectURL(rec.blob));
+    currentAudioRef.current = audio;
+    setPlayingId(rec.id);
+    
+    audio.onended = () => setPlayingId(null);
+    audio.play();
+  };
+
   return (
-    <div className="flex flex-col items-center gap-6 w-full max-w-md">
-      {/* Visualizador de Onda */}
-      <div className="w-full h-32 bg-slate-100 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center relative overflow-hidden">
-        {!isRecording && (
-          <div className="absolute inset-0 flex items-center justify-center text-slate-400 gap-2">
-            <Volume2 size={16} />
-            <span className="text-xs font-bold uppercase tracking-widest">Pronto para gravar</span>
+    <div className="w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Console Principal - Área de Gravação */}
+      <div className="col-span-1 lg:col-span-2 bg-zinc-950 rounded-3xl border border-zinc-800 shadow-2xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[400px]">
+        {/* Painel Superior do Console */}
+        <div className="flex justify-between items-start mb-6 z-10 relative">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-3">
+              <Radio size={20} className={isRecording ? 'text-red-500 animate-pulse' : 'text-zinc-500'} />
+              <h2 className="text-zinc-100 font-bold tracking-wide uppercase text-sm">Vocal Channel Strip</h2>
+            </div>
+            <span className="text-zinc-500 text-xs font-mono ml-8">PCM 44.1kHz • Studio Quality</span>
           </div>
-        )}
-        <canvas 
-          ref={canvasRef} 
-          width={400} 
-          height={128} 
-          className="w-full h-full"
-        />
+          
+          <div className="flex items-center gap-4 bg-zinc-900 px-4 py-2 rounded-full border border-zinc-800">
+            <Activity size={14} className="text-indigo-400" />
+            <div className="w-24 h-1.5 bg-zinc-950 rounded-full overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-75 ${volumeLevel > 80 ? 'bg-red-500' : volumeLevel > 50 ? 'bg-amber-400' : 'bg-emerald-400'}`} 
+                style={{ width: `${volumeLevel}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Display da Onda */}
+        <div className="relative flex-grow bg-zinc-900/50 rounded-2xl border border-zinc-800/50 flex items-center justify-center overflow-hidden mb-8 shadow-inner">
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+          {!isRecording && !isUploading && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-600 gap-3 z-10">
+              <Mic size={48} className="opacity-20" />
+              <span className="text-xs font-mono uppercase tracking-[0.3em]">Aguardando Sinal</span>
+            </div>
+          )}
+          <canvas ref={canvasRef} width={800} height={200} className="w-full h-full relative z-10" />
+        </div>
+
+        {/* Controles de Transporte */}
+        <div className="flex items-center justify-between z-10 relative">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={isRecording ? stopRecording : (isUploading ? undefined : startRecording)}
+              disabled={isUploading}
+              className={`group relative flex items-center justify-center w-20 h-20 rounded-full transition-all duration-300 ${
+                isRecording 
+                  ? 'bg-red-600 hover:bg-red-500 shadow-[0_0_40px_rgba(220,38,38,0.4)] border-4 border-red-950' 
+                  : isUploading 
+                    ? 'bg-zinc-800 border-4 border-zinc-900' 
+                    : 'bg-indigo-600 hover:bg-indigo-500 shadow-[0_0_30px_rgba(79,70,229,0.2)] border-4 border-indigo-950'
+              }`}
+            >
+              {isUploading ? <Loader2 size={28} className="text-zinc-400 animate-spin" /> :
+               isRecording ? <Square size={28} className="text-white fill-current" /> : 
+               <Mic size={32} className="text-white" />}
+            </button>
+            
+            <div className="flex flex-col">
+              <span className="text-zinc-100 font-bold text-lg">{isRecording ? 'Gravando...' : 'Pronto'}</span>
+              <span className="text-zinc-500 text-sm">{isRecording ? 'Pressione para parar' : 'Pressione para iniciar'}</span>
+            </div>
+          </div>
+
+          {wavUrl && !isRecording && (
+            <a 
+              href={wavUrl} 
+              download={`vocal_take_${Date.now()}.wav`} 
+              className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-6 py-3 rounded-full font-semibold transition-all border border-zinc-700 hover:border-zinc-500"
+            >
+              <Download size={18} /> Exportar WAV
+            </a>
+          )}
+        </div>
       </div>
 
-      {/* Controle de Gravação */}
-      <button
-        onClick={isRecording ? stopRecording : (isUploading ? undefined : startRecording)}
-        disabled={isUploading}
-        className={`group relative p-8 rounded-full transition-all duration-500 ${
-          isRecording 
-          ? 'bg-red-500 shadow-[0_0_30px_rgba(239,68,68,0.4)]' 
-          : isUploading
-          ? 'bg-slate-400 cursor-not-allowed'
-          : 'bg-indigo-600 hover:bg-indigo-500 shadow-xl'
-        }`}
-      >
-        {isUploading ? (
-          <Loader2 size={32} className="text-white animate-spin" />
-        ) : isRecording ? (
-          <Square size={32} className="text-white fill-current" />
-        ) : (
-          <Mic size={32} className="text-white" />
-        )}
-        {isRecording && <span className="absolute -top-1 -right-1 flex h-4 w-4">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-4 w-4 bg-red-600"></span>
-        </span>}
-      </button>
+      {/* Rack de Histórico - Takes */}
+      <div className="col-span-1 bg-zinc-950 rounded-3xl border border-zinc-800 shadow-xl p-6 flex flex-col h-[400px] lg:h-auto max-h-[600px]">
+        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-zinc-800">
+          <Sliders size={20} className="text-indigo-400" />
+          <h2 className="text-zinc-100 font-bold tracking-wide uppercase text-sm">Biblioteca de Takes</h2>
+        </div>
+
+        <div className="flex-grow overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+          {localHistory.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-zinc-600 gap-2">
+              <Activity size={32} className="opacity-20" />
+              <p className="text-sm">Nenhum take gravado ainda.</p>
+            </div>
+          ) : (
+            localHistory.map((rec) => (
+              <div key={rec.id} className="group flex items-center justify-between p-4 bg-zinc-900 border border-zinc-800 rounded-2xl hover:border-indigo-500/50 transition-colors">
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => togglePlay(rec)} 
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${playingId === rec.id ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25' : 'bg-zinc-800 text-indigo-400 hover:bg-zinc-700'}`}
+                  >
+                    {playingId === rec.id ? <Square size={16} className="fill-current" /> : <Play size={18} className="fill-current ml-1" />}
+                  </button>
+                  <div className="flex flex-col">
+                    <span className="text-zinc-200 font-semibold text-sm">{rec.name}</span>
+                    <span className="text-zinc-500 text-xs">{rec.duration.toFixed(2)}s • {new Date(rec.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button 
+                    onClick={() => deleteLocalRecording(rec.id).then(() => getLocalRecordings().then(setLocalHistory))} 
+                    className="p-2 text-zinc-500 hover:text-red-400 transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 };

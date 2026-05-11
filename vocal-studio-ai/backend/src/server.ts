@@ -8,16 +8,24 @@ import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import composerRoutes from './routes/composer.js';
 
-// Configuração do CORS para produção
-const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173', // Sua URL do Vercel aqui
-  optionsSuccessStatus: 200
-};
-
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+// Configuração do CORS atualizada e definitiva
+const corsOptions = {
+  origin: [
+    'http://localhost:5173', // Para seus testes locais no PC
+    'https://vocal-studio-ai.vercel.app', // Seu site oficial na Vercel
+    process.env.FRONTEND_URL // Caso adicione variáveis extras no Render
+  ].filter(Boolean) as string[], // Evita URLs vazias
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+// Aplica a regra de segurança para TODAS as rotas do servidor de uma vez
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Configurando o cliente Supabase (usando variáveis de ambiente)
@@ -45,11 +53,11 @@ const upload = multer({
   }
 });
 
-// Ativando as rotas do Compositor de IA
-app.use('/api/composer', cors(corsOptions), composerRoutes); // Aplicando CORS apenas para as rotas do compositor
+// Ativando as rotas do Compositor de IA (CORS já foi aplicado globalmente acima)
+app.use('/api/composer', composerRoutes);
 
 // Rota de Upload
-app.post('/api/studio/process', upload.single('audio'), async (req: Request, res: Response) => {
+app.post('/api/studio/process', upload.single('audio'), async (req: Request, res: Response): Promise<any> => {
   try {
     const file = req.file;
     if (!file) {

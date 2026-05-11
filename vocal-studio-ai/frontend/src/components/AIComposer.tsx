@@ -3,6 +3,8 @@ import { Music, Sparkles, Loader2, CheckCircle2, AlertCircle, UserCircle2, Play,
 import { useLanguage } from '@context/LanguageContext';
 import { useStudioStore } from '@store/useStudioStore';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
+
 export const AIComposer: React.FC = () => {
   const { t } = useLanguage();
   const [lyrics, setLyrics] = useState('');
@@ -72,7 +74,6 @@ export const AIComposer: React.FC = () => {
     }
     
     setIsComposing(true);
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
     
     try {
       const response = await fetch(`${API_URL}/api/composer/expand`, {
@@ -101,8 +102,6 @@ export const AIComposer: React.FC = () => {
     setComposerError(null);
     setGeneratedSongUrl(null); // Limpa a URL anterior
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
-
     try {
       const response = await fetch(`${API_URL}/api/composer/generate`, { // Usando API_URL
         method: 'POST',
@@ -124,7 +123,7 @@ export const AIComposer: React.FC = () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
       
       pollIntervalRef.current = setInterval(async () => {
-        try { // Usando API_URL
+        try {
           const statusRes = await fetch(`${API_URL}/api/composer/status/${taskId}`);
           const statusData = await statusRes.json();
 

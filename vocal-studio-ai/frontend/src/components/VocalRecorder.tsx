@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Loader2, Download, Play, Trash2, Sliders, Radio, Activity } from 'lucide-react';
+import { Mic, Square, Loader2, Download, Play, Trash2, Sliders, Radio, Activity, CloudUpload } from 'lucide-react';
 import { useStudioStore } from '@store/useStudioStore';
+import { supabase } from '@lib/supabase';
 import { saveLocalRecording, getLocalRecordings, deleteLocalRecording, type Recording } from '@lib/db';
 
 export const VocalRecorder: React.FC = () => {
@@ -9,6 +10,7 @@ export const VocalRecorder: React.FC = () => {
   const [wavUrl, setWavUrl] = useState<string | null>(null);
   const [localHistory, setLocalHistory] = useState<Recording[]>([]);
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
 
   const { volumeLevel, setVolumeLevel } = useStudioStore();
   
@@ -124,6 +126,41 @@ export const VocalRecorder: React.FC = () => {
       console.error("Erro no processamento:", err);
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  // Nova função para enviar apenas o take escolhido para a nuvem
+  const uploadTakeToCloud = async (rec: Recording) => {
+    if (!supabase) {
+      alert("Conexão com o Supabase não configurada.");
+      return;
+    }
+
+    setUploadingId(rec.id);
+    try {
+      const fileName = `vocal_take_${Date.now()}.wav`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('vocal-recordings')
+        .upload(fileName, rec.blob, {
+          contentType: 'audio/wav',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('vocal-recordings')
+        .getPublicUrl(fileName);
+
+      alert("Take salvo na nuvem com sucesso!");
+      console.log("URL Pública:", publicUrl);
+
+    } catch (err) {
+      console.error("Erro no upload:", err);
+      alert("Erro ao salvar o áudio na nuvem. Verifique a conexão.");
+    } finally {
+      setUploadingId(null);
     }
   };
 
@@ -290,6 +327,16 @@ export const VocalRecorder: React.FC = () => {
                 </div>
                 
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Botão de Nuvem (Upload) */}
+                  <button 
+                    onClick={() => uploadTakeToCloud(rec)}
+                    disabled={uploadingId === rec.id}
+                    title="Salvar na Nuvem"
+                    className="p-2 text-zinc-500 hover:text-emerald-400 transition-colors disabled:opacity-50"
+                  >
+                    {uploadingId === rec.id ? <Loader2 size={16} className="animate-spin text-emerald-400" /> : <CloudUpload size={16} />}
+                  </button>
+
                   <button 
                     onClick={() => deleteLocalRecording(rec.id).then(() => getLocalRecordings().then(setLocalHistory))} 
                     className="p-2 text-zinc-500 hover:text-red-400 transition-colors"

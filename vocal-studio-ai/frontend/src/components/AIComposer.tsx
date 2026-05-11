@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Music, Sparkles, Loader2, CheckCircle2, AlertCircle, UserCircle2, Play, Pause } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
-import { useStudioStore } from '../store/useStudioStore';
+import { useLanguage } from '@context/LanguageContext';
+import { useStudioStore } from '@store/useStudioStore';
 
 export const AIComposer: React.FC = () => {
   const { t } = useLanguage();
@@ -58,6 +58,31 @@ export const AIComposer: React.FC = () => {
         previewAudioRef.current.play();
       }
       setIsPreviewPlaying(!isPreviewPlaying);
+    }
+  };
+
+  const handleHelpWithLyrics = async () => {
+    if (!lyrics) {
+      setComposerError("Escreva pelo menos uma frase para eu te ajudar!");
+      return;
+    }
+    
+    setIsComposing(true);
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
+    
+    try {
+      const response = await fetch(`${API_URL}/api/composer/expand`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lyrics, rhythm: selectedRhythm }),
+      });
+      
+      const data = await response.json();
+      setLyrics(prev => prev + "\n" + data.suggestion);
+    } catch (error) {
+      setComposerError("Não consegui pensar em rimas agora...");
+    } finally {
+      setIsComposing(false);
     }
   };
 
@@ -138,12 +163,21 @@ export const AIComposer: React.FC = () => {
         <h3 className="font-bold text-slate-800 dark:text-white">{t.composerTitle}</h3>
       </div>
 
-      <textarea
-        value={lyrics}
-        onChange={(e) => setLyrics(e.target.value)}
-        placeholder={t.composerPlaceholder}
-        className="w-full h-32 p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all text-slate-900 dark:text-white"
-      />
+      <div className="relative">
+        <textarea
+          value={lyrics}
+          onChange={(e) => setLyrics(e.target.value)}
+          placeholder={t.composerPlaceholder}
+          className="w-full h-32 p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all text-slate-900 dark:text-white"
+        />
+        <button 
+          onClick={handleHelpWithLyrics}
+          className="absolute bottom-3 right-3 p-2 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-lg hover:scale-110 transition-transform"
+          title="Pedir ajuda para a IA com a letra"
+        >
+          <Sparkles size={16} />
+        </button>
+      </div>
 
       <div className="mt-4 space-y-4">
         {/* Voice Style Selector */}

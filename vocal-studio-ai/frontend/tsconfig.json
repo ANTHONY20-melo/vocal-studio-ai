@@ -1,7 +1,40 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
+  "compilerOptions": {
+    "target": "ES2020", // Define o target JavaScript para ES2020 (moderno)
+    "useDefineForClassFields": true, // Necessário para campos de classe no TS com Vite
+    "lib": ["ES2020", "DOM", "DOM.Iterable"], // Bibliotecas padrão para aplicações web
+    "module": "ESNext", // Usa módulos ES modernos
+    "skipLibCheck": true, // Acelera a compilação ignorando a verificação de tipos de arquivos de declaração
+
+    /* Configurações para Bundler (Vite) */
+    "moduleResolution": "bundler", // Recomendado para Vite
+    "allowImportingTsExtensions": true, // Permite importar arquivos .ts/.tsx com extensão
+    "resolveJsonModule": true, // Permite importar módulos JSON
+    "isolatedModules": true, // Garante que cada arquivo pode ser transpilado isoladamente
+    "noEmit": true, // O Vite cuidará da emissão do JS, o TS só faz a verificação de tipos
+    "jsx": "react-jsx", // Habilita o suporte a JSX com o runtime React
+
+    /* Verificação de Tipos */
+    "strict": true, // Habilita todas as opções de verificação de tipo estrita
+    "noUnusedLocals": true, // Avisa sobre variáveis locais não utilizadas
+    "noUnusedParameters": true, // Avisa sobre parâmetros não utilizados
+    "noFallthroughCasesInSwitch": true, // Avisa sobre casos de switch sem break
+
+    /* Path Aliases e Resolução de Tipos */
+    "baseUrl": ".",
+    "typeRoots": ["./node_modules/@types"], // Procura tipos em node_modules do frontend
+    "types": ["vite/client"], // Adiciona os tipos do Vite globalmente para o projeto
+    "paths": {
+      "@/*": ["./src/*"], // Agora relativo à pasta frontend
+      "@components/*": ["./src/components/*"],
+      "@lib/*": ["./src/lib/*"],
+      "@context/*": ["./src/context/*"],
+      "@store/*": ["./src/store/*"]
+    }
+  },
+  "include": [
+    "./src/**/*.ts",
+    "./src/**/*.tsx",
+    "./src/**/*.d.ts"
   ]
 }

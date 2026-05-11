@@ -1,7 +1,7 @@
 import React from 'react';
 import { SlidersHorizontal } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
-import { useStudioStore } from '../store/useStudioStore';
+import { useLanguage } from '@context/LanguageContext';
+import { useStudioStore } from '@store/useStudioStore';
 
 export const Mixer: React.FC = () => {
   const { t } = useLanguage();

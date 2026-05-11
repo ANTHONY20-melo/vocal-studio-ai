@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Download, BarChart3, Music as MusicIcon, Trash2, Edit2 } from 'lucide-react';
-import { useStudioStore } from '../store/useStudioStore';
-import { useLanguage } from '../context/LanguageContext';
+import { useStudioStore } from '@store/useStudioStore';
+import { useLanguage } from '@context/LanguageContext';
 
 export const AIDashboard: React.FC = () => {
   const { t } = useLanguage();

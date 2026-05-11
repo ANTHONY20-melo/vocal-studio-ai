@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Mic, Square, Volume2, Loader2 } from 'lucide-react';
-import { useStudioStore } from '../store/useStudioStore';
-import { supabase } from '../lib/supabase';
+import { useStudioStore } from '@store/useStudioStore';
+import { supabase } from '@lib/supabase';
+import { useLanguage } from '@context/LanguageContext'; // Adicionado, pois VocalRecorder usa 't'
 
 export const VocalRecorder: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);

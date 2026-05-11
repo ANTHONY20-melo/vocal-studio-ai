@@ -1,7 +1,7 @@
 import React from 'react';
 import { Wand2, Waves, Clock } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
-import { useStudioStore } from '../store/useStudioStore';
+import { useLanguage } from '@context/LanguageContext';
+import { useStudioStore } from '@store/useStudioStore';
 
 export const EffectsRack: React.FC = () => {
   const { t } = useLanguage();

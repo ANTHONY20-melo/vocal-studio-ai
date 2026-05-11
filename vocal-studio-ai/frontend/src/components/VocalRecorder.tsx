@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Loader2, Download, Play, Trash2, Sliders, Radio, Activity, CloudUpload, History as HistoryIcon } from 'lucide-react';
+import { Mic, Square, Loader2, Download, Play, Trash2, Sliders, Radio, Activity, CloudUpload } from 'lucide-react';
 import { useStudioStore } from '@store/useStudioStore';
 import { supabase } from '@lib/supabase';
 import { saveLocalRecording, getLocalRecordings, deleteLocalRecording, type Recording } from '@lib/db';

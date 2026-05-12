@@ -3,63 +3,73 @@ import axios from 'axios';
 
 const composerRoutes = Router();
 
-// Mantemos um cache local temporário para gerenciar as chamadas
-const jobs = new Map<string, { status: 'processing' | 'completed' | 'failed', audioUrl?: string, rhythm: string, externalId?: string }>();
+// Cache em memória para gerenciar o status da interface
+const jobs = new Map<string, { 
+  status: 'processing' | 'completed' | 'failed', 
+  audioUrl?: string, 
+  rhythm: string, 
+  voiceStyle?: string
+}>();
 
-// Rota 1: Envia a letra para a IA gerar a música
 composerRoutes.post('/generate', async (req, res) => {
   const { lyrics, rhythm, voiceStyle, userId } = req.body;
 
-  if (!lyrics || !rhythm) {
-    return res.status(400).json({ error: 'Letra e ritmo são obrigatórios.' });
+  if (!lyrics) {
+    return res.status(400).json({ error: 'A letra é obrigatória.' });
   }
 
-  console.log(`[Composer AI] Iniciando composição Real para ${userId || 'Anônimo'}...`);
+  // Identificador interno da tarefa
+  const taskId = Math.random().toString(36).substring(7);
+  
+  // 1. Imediatamente avisa o frontend que começou a processar
+  jobs.set(taskId, { status: 'processing', rhythm, voiceStyle });
+  res.json({ taskId, message: 'Gerando voz via RapidAPI...' });
 
+  // 2. Faz a chamada real para a RapidAPI em background
   try {
-    const taskId = Math.random().toString(36).substring(7);
-    jobs.set(taskId, { status: 'processing', rhythm });
+    console.log(`[Composer AI] Enviando letra para MeloTTS...`);
 
-    // === INTEGRAÇÃO COM A API REAL DA IA ===
-    // Exemplo usando uma API comum de wrapper do Suno v3.5
-    // Você precisa ter a variável SUNO_API_KEY no seu .env do Render
-    
-    if (!process.env.SUNO_API_KEY) {
-        console.warn("⚠️ CHAVE DA API NÃO ENCONTRADA! Usando modo de simulação.");
-        // Fallback de segurança caso você não tenha colocado a chave no Render ainda
-        setTimeout(() => {
-          jobs.set(taskId, { status: 'completed', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', rhythm });
-        }, 5000);
-        return res.json({ taskId, message: 'Simulação iniciada (Chave ausente)' });
-    }
+    // Pegamos a chave do .env, ou usamos a sua (cuidado com ela exposta aqui!)
+    const apiKey = process.env.RAPIDAPI_KEY || 'd7b9ab3a34mshd802c430fe6c7b1p11f6e8jsn3d8852a0b276';
 
-    const response = await axios.post('https://suno-api-url-aqui.com/api/custom_generate', {
-      prompt: lyrics,
-      tags: `${rhythm}, ${voiceStyle}`,
-      title: "Take VocalStudio",
-      make_instrumental: false,
-      wait_audio: false // Retorna o ID imediatamente para não dar timeout no servidor
-    }, {
-      headers: {
-        'Authorization': `Bearer ${process.env.SUNO_API_KEY}`,
-        'Content-Type': 'application/json'
+    const response = await axios.post(
+      'https://melotts-api-multilingual-text-to-speech-audio-generator.p.rapidapi.com/api/generate/text-speech', 
+      {
+        prompt: lyrics, // Enviamos a letra digitada pelo usuário
+        outputType: 'binary'
+      }, 
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-rapidapi-host': 'melotts-api-multilingual-text-to-speech-audio-generator.p.rapidapi.com',
+          'x-rapidapi-key': apiKey
+        },
+        // CRÍTICO: Avisa o axios para não corromper o arquivo de áudio binário
+        responseType: 'arraybuffer' 
       }
+    );
+
+    // 3. O áudio voltou em formato binário. Vamos converter para Base64 (URL tocável no navegador)
+    const base64Audio = Buffer.from(response.data, 'binary').toString('base64');
+    const audioDataUrl = `data:audio/mpeg;base64,${base64Audio}`;
+
+    // 4. Salva como concluído para o Frontend pegar no próximo "status check"
+    jobs.set(taskId, { 
+      status: 'completed', 
+      audioUrl: audioDataUrl, 
+      rhythm, 
+      voiceStyle 
     });
+    console.log(`[Composer AI] Áudio gerado com sucesso para a tarefa ${taskId}!`);
 
-    // Salva o ID que a IA externa devolveu para consultarmos depois
-    const externalId = response.data[0].id;
-    jobs.set(taskId, { status: 'processing', rhythm, externalId });
-
-    return res.json({ taskId, message: 'Composição enviada para os servidores da IA!' });
-
-  } catch (error) {
-    console.error('Erro ao chamar API de IA:', error);
-    return res.status(500).json({ error: 'Erro de comunicação com o motor de IA.' });
+  } catch (error: any) {
+    console.error('[RapidAPI Error]:', error.response?.data?.toString() || error.message);
+    jobs.set(taskId, { status: 'failed', rhythm, voiceStyle });
   }
 });
 
-// Rota 2: O Frontend fica perguntando "Já ficou pronto?"
-composerRoutes.get('/status/:taskId', async (req, res) => {
+// Rota de Polling do Frontend
+composerRoutes.get('/status/:taskId', (req, res) => {
   const { taskId } = req.params;
   const job = jobs.get(taskId);
 
@@ -67,34 +77,7 @@ composerRoutes.get('/status/:taskId', async (req, res) => {
     return res.status(404).json({ error: 'Tarefa não encontrada.' });
   }
 
-  // Se já terminou ou falhou, devolve o que tem
-  if (job.status !== 'processing' || !job.externalId) {
-    return res.json(job);
-  }
-
-  try {
-    // Se está processando e tem chave da API, pergunta pra IA se a música já renderizou
-    const response = await axios.get(`https://suno-api-url-aqui.com/api/get?ids=${job.externalId}`, {
-      headers: { 'Authorization': `Bearer ${process.env.SUNO_API_KEY}` }
-    });
-
-    const aiTrack = response.data[0];
-
-    if (aiTrack.status === 'streaming' || aiTrack.status === 'complete') {
-      // A música ficou pronta! Salva a URL do áudio (geralmente mp3 ou wav)
-      job.status = 'completed';
-      job.audioUrl = aiTrack.audio_url;
-      jobs.set(taskId, job);
-    } else if (aiTrack.status === 'error') {
-      job.status = 'failed';
-      jobs.set(taskId, job);
-    }
-
-    return res.json(job);
-  } catch (error) {
-    console.error('Erro ao verificar status na IA:', error);
-    return res.json(job); // Retorna processando se der erro temporário de rede
-  }
+  return res.json(job);
 });
 
 export default composerRoutes;

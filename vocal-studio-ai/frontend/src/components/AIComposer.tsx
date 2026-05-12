@@ -21,7 +21,7 @@ export const AIComposer: React.FC = () => {
     };
   }, []);
 
-  // Mapeamento de demonstrações (Exemplos reais seriam necessários no futuro)
+  // Mapeamento de demonstrações
   const voiceStylePreviews: Record<string, string> = {
     femalePop: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
     femaleHigh: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
@@ -35,7 +35,6 @@ export const AIComposer: React.FC = () => {
     soulful: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
   };
 
-  // Usar o ritmo selecionado globalmente do VocalRecorder, se houver
   const { 
     selectedRhythm, 
     selectedVoiceStyle,
@@ -46,12 +45,12 @@ export const AIComposer: React.FC = () => {
     addSong 
   } = useStudioStore();
 
-  // Ritmos padrão se nenhum for selecionado no VocalRecorder
   const defaultRhythms = [
     'Gospel', 'Pagode', 'Axé', 'Sertanejo', 'Trap', 
     'Rock Alternativo', 'Reggaeton', 'Bossa Nova', 
     'Lo-fi Chill', 'Phonk', 'Pop Anos 80'
   ];
+  
   const rhythmsToDisplay = selectedRhythm && selectedRhythm.trim() !== "" 
     ? [selectedRhythm, ...defaultRhythms.filter(r => r !== selectedRhythm)] 
     : defaultRhythms;
@@ -100,10 +99,10 @@ export const AIComposer: React.FC = () => {
 
     setIsComposing(true);
     setComposerError(null);
-    setGeneratedSongUrl(null); // Limpa a URL anterior
+    setGeneratedSongUrl(null);
 
     try {
-      const response = await fetch(`${API_URL}/api/composer/generate`, { // Usando API_URL
+      const response = await fetch(`${API_URL}/api/composer/generate`, { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -117,7 +116,6 @@ export const AIComposer: React.FC = () => {
       if (!response.ok) throw new Error('Falha na geração da música');
       const data = await response.json();
       
-      // Inicia o Polling
       const taskId = data.taskId;
       
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
@@ -125,6 +123,19 @@ export const AIComposer: React.FC = () => {
       pollIntervalRef.current = setInterval(async () => {
         try {
           const statusRes = await fetch(`${API_URL}/api/composer/status/${taskId}`);
+          
+          // TRAVA DE SEGURANÇA: Se o servidor der 404 ou erro, para o loop imediatamente
+          if (!statusRes.ok) {
+            if (statusRes.status === 404) {
+              setComposerError("A tarefa expirou ou o servidor reiniciou. Tente novamente.");
+            } else {
+              setComposerError("Erro de comunicação com o servidor.");
+            }
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+            setIsComposing(false);
+            return;
+          }
+
           const statusData = await statusRes.json();
 
           if (statusData.status === 'completed') {
@@ -132,7 +143,6 @@ export const AIComposer: React.FC = () => {
             setGeneratedSongUrl(statusData.audioUrl);
             setIsComposing(false);
             
-            // Adiciona automaticamente ao Dashboard
             addSong({
               id: taskId,
               title: `Nova Obra ${statusData.rhythm}`,
@@ -151,7 +161,7 @@ export const AIComposer: React.FC = () => {
           setComposerError("Conexão perdida com o servidor de IA.");
           setIsComposing(false);
         }
-      }, 3000); // Checa a cada 3 segundos
+      }, 3000); 
     } catch (error) {
       setComposerError("Erro ao compor a música com a IA. Tente novamente.");
       console.error("Erro ao compor música:", error);
@@ -183,7 +193,6 @@ export const AIComposer: React.FC = () => {
       </div>
 
       <div className="mt-4 space-y-4">
-        {/* Voice Style Selector */}
         <div>
           <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider flex items-center gap-1">
             <UserCircle2 size={12} /> {t.voiceStyleLabel}
@@ -243,7 +252,7 @@ export const AIComposer: React.FC = () => {
         <button
           onClick={handleComposeSong}
           disabled={!lyrics || !selectedRhythm || isComposing}
-          className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20" // Adicionado disabled
+          className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20"
         >
           {isComposing ? <Loader2 className="animate-spin" size={18} /> : <Music size={18} />}
           {t.composerButton}
